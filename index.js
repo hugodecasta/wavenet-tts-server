@@ -1,4 +1,4 @@
-const { create_tts_file, audio_dir, fr_voices } = require('./core')
+const { create_tts_file, audio_dir, used_voices } = require('./core')
 const key_manager = require('./key_manager')
 const bodyParser = require('body-parser')
 const express = require('express')
@@ -37,13 +37,13 @@ function auth_test(req, res, next) {
 // ------------------------------------------------------ API ROUTES
 
 app.get('/api/voices', auth_test, async (req, res) => {
-    res.json(fr_voices)
+    res.json(used_voices)
 })
 
 app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
-    let { text, voice_name } = req.body
+    let { text, voice_name, lang } = req.body
     try {
-        res.jsonp(await create_tts_file(text, voice_name))
+        res.jsonp(await create_tts_file(text, voice_name, lang))
     } catch (e) {
         console.log('ERROR', e)
         res.status(400)

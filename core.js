@@ -9,10 +9,14 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = __dirname + '/google_credentials.js
 
 // --------------------------- VOICES
 const voices = require('./voices.json')
-const fr_voices = Object.fromEntries(voices
-    .filter(v => v.name.includes('fr-FR-Wavenet'))
-    .map(v => [v.name, v])
-)
+const langs = ['fr-FR', 'en-US']
+const used_voices = Object.fromEntries([...'ABCDE'].map(name => [
+    name,
+    Object.fromEntries(langs.map(lang => [
+        lang,
+        voices.find(v => v.name.includes(`${lang}-Wavenet-${name}`))
+    ]))
+]))
 
 // --------------------------- SAVE DATA
 const audio_dir = __dirname + '/audio_data'
@@ -33,8 +37,10 @@ async function tts(text, voice) {
     return response.audioContent
 }
 
-async function create_tts_file(text, voice_name) {
-    const voice = fr_voices[voice_name]
+async function create_tts_file(text, voice_name, lang) {
+    console.log(voice_name, lang)
+    const voice = used_voices[voice_name][lang]
+    console.log(voice)
     const sent_text = parsed_for_tts(text)
     const sound_bin = await tts(sent_text, voice)
     const file_name = `${Date.now() + '-' + parseInt(Math.random() * 100000)}.mp3`
@@ -45,4 +51,4 @@ async function create_tts_file(text, voice_name) {
 
 //--------------------------------------------------------------------------------------- EXPORTS
 
-module.exports = { create_tts_file, audio_dir, fr_voices }
+module.exports = { create_tts_file, audio_dir, used_voices }
