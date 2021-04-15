@@ -15,6 +15,10 @@ var jsonParser = bodyParser.json()
 app.use(cors())
 app.use('/sounds', express.static(audio_dir));
 
+app.get('/wavenet-server.js', async (req, res) => {
+    res.sendFile(__dirname + '/lib.js')
+})
+
 // ------------------------------------------------------ AUTH MIDDLEWARE
 
 function check_auth(headers) {
@@ -23,7 +27,6 @@ function check_auth(headers) {
 }
 
 function auth_test(req, res, next) {
-    console.log('auth test')
     if (check_auth(req.headers)) {
         return next()
     }
@@ -39,7 +42,6 @@ app.get('/api/voices', auth_test, async (req, res) => {
 
 app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
     let { text, voice_name } = req.body
-    console.log(req.body)
     try {
         res.jsonp(await create_tts_file(text, voice_name))
     } catch (e) {
