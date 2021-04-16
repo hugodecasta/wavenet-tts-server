@@ -22,10 +22,31 @@ const used_voices = Object.fromEntries([...'ABCDE'].map(name => [
 const audio_dir = __dirname + '/audio_data'
 if (!fs.existsSync(audio_dir)) fs.mkdirSync(audio_dir)
 
+const quotas_dir = __dirname + '/quotas_data'
+if (!fs.existsSync(quotas_dir)) fs.mkdirSync(quotas_dir)
+
 // --------------------------- CLIENT
 const client = new textToSpeech.TextToSpeechClient();
 
 //--------------------------------------------------------------------------------------- METHODS
+
+function quotas_path(key) {
+    return `${quotas_dir}/${key}.json`
+}
+
+function set_quotas(key, text) {
+    const length = text.length
+    const path = quotas_path(key)
+    if (!fs.existsSync(path)) fs.writeFileSync(path, '[]')
+    const quotas_data = JSON.parse(fs.readFileSync(path))
+    quotas_data.push({ key, length, date: Date.now() })
+    fs.writeFileSync(path, JSON.stringify(quotas_data))
+}
+
+function get_quotas(key) {
+    const path = quotas_path(key)
+    return fs.existsSync(path) ? JSON.parse(fs.readFileSync(path)) : []
+}
 
 async function tts(text, voice) {
     const request = {
@@ -37,9 +58,10 @@ async function tts(text, voice) {
     return response.audioContent
 }
 
-async function create_tts_file(text, voice_name, lang) {
+async function create_tts_file(text, voice_name, lang, key) {
     const voice = used_voices[voice_name][lang]
     const sent_text = parsed_for_tts(text)
+    set_quotas(key, sent_text)
     const sound_bin = await tts(sent_text, voice)
     const file_name = `${Date.now() + '-' + parseInt(Math.random() * 100000)}.mp3`
     const path = `${audio_dir}/${file_name}`
@@ -60,4 +82,4 @@ function init_eraser(time_to_delete_ms, time_to_check = time_to_delete_ms) {
 
 //--------------------------------------------------------------------------------------- EXPORTS
 
-module.exports = { create_tts_file, init_eraser, audio_dir, used_voices }
+module.exports = { create_tts_file, init_eraser, get_quotas, audio_dir, used_voices }

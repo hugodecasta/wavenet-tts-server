@@ -20,6 +20,10 @@ class WAVENET_CLIENT {
         return this.__make_call('voices')
     }
 
+    get_quotas() {
+        return this.__make_call('quotas')
+    }
+
     async tts(text, voice_name, lang = 'fr-FR') {
         const file_name = await this.__make_call('tts', { text, voice_name, lang })
         return `${this.host}/sounds/${file_name}`

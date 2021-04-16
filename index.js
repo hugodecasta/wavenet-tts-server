@@ -1,4 +1,4 @@
-const { create_tts_file, init_eraser, audio_dir, used_voices } = require('./core')
+const { create_tts_file, init_eraser, get_quotas, audio_dir, used_voices } = require('./core')
 const key_manager = require('./key_manager')
 const bodyParser = require('body-parser')
 const express = require('express')
@@ -22,12 +22,13 @@ app.get('/wavenet-server.js', async (req, res) => {
 // ------------------------------------------------------ AUTH MIDDLEWARE
 
 function check_auth(headers) {
-    let key = headers['wns-apikey']
+    const key = headers['wns-apikey']
     return key_manager.key_exists(key)
 }
 
 function auth_test(req, res, next) {
     if (check_auth(req.headers)) {
+        req.auth_key = req.headers['wns-apikey']
         return next()
     }
     res.status(403)
@@ -40,10 +41,16 @@ app.get('/api/voices', auth_test, async (req, res) => {
     res.json(used_voices)
 })
 
+app.get('/api/quotas', auth_test, async (req, res) => {
+    let key = req.auth_key
+    res.json(get_quotas(key))
+})
+
 app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
     let { text, voice_name, lang } = req.body
+    let key = req.auth_key
     try {
-        res.jsonp(await create_tts_file(text, voice_name, lang))
+        res.jsonp(await create_tts_file(text, voice_name, lang, key))
     } catch (e) {
         console.log('ERROR', e)
         res.status(400)
