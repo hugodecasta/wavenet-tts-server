@@ -1,4 +1,4 @@
-const { create_tts_file, audio_dir, used_voices } = require('./core')
+const { create_tts_file, init_eraser, audio_dir, used_voices } = require('./core')
 const key_manager = require('./key_manager')
 const bodyParser = require('body-parser')
 const express = require('express')
@@ -50,6 +50,10 @@ app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
         res.send(e)
     }
 })
+
+// ------------------------------------------------------ INIT "CRON" erase old sound files
+
+init_eraser(1000 * 60 * 2, 1000 * 60)
 
 // ------------------------------------------------------ LISTEN
 

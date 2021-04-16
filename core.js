@@ -38,9 +38,7 @@ async function tts(text, voice) {
 }
 
 async function create_tts_file(text, voice_name, lang) {
-    console.log(voice_name, lang)
     const voice = used_voices[voice_name][lang]
-    console.log(voice)
     const sent_text = parsed_for_tts(text)
     const sound_bin = await tts(sent_text, voice)
     const file_name = `${Date.now() + '-' + parseInt(Math.random() * 100000)}.mp3`
@@ -49,6 +47,17 @@ async function create_tts_file(text, voice_name, lang) {
     return file_name
 }
 
+function init_eraser(time_to_delete_ms, time_to_check = time_to_delete_ms) {
+    function erase() {
+        const now = Date.now()
+        const sound_files = fs.readdirSync(audio_dir)
+        sound_files
+            .filter(file => (now - parseInt(file.split('-').shift())) > time_to_delete_ms)
+            .forEach(file => fs.unlinkSync(`${audio_dir}/${file}`))
+    }
+    setInterval(erase, time_to_check)
+}
+
 //--------------------------------------------------------------------------------------- EXPORTS
 
-module.exports = { create_tts_file, audio_dir, used_voices }
+module.exports = { create_tts_file, init_eraser, audio_dir, used_voices }
