@@ -22,7 +22,10 @@ let keys = JSON.parse(fs.readFileSync(key_file_path))
 // ---------------- FILE SYSTEM
 
 function load() {
-    keys = JSON.parse(fs.readFileSync(key_file_path))
+    const r_keys = JSON.parse(fs.readFileSync(key_file_path))
+    Object.entries(r_keys).forEach(([key, data]) => keys[key] = data)
+    Object.keys(keys).filter(key => !Object.keys(r_keys).includes(key))
+        .forEach(key => delete keys[key])
 }
 
 function save() {
@@ -49,7 +52,7 @@ function remove_key(key) {
 
 function key_exists(key) {
     load()
-    return key in keys
+    return keys[key] !== undefined
 }
 
 function key_working(key) {

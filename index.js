@@ -43,6 +43,10 @@ app.get('/api/voices', auth_test, async (req, res) => {
 
 app.get('/api/quotas', auth_test, async (req, res) => {
     let key = req.auth_key
+    if (key_manager.is_admin(key)) {
+        let all_keys = Object.keys(key_manager.keys)
+        return res.json(Object.fromEntries(all_keys.map(key => [key, get_quotas(key)])))
+    }
     res.json(get_quotas(key))
 })
 
