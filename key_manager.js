@@ -19,6 +19,8 @@ let keys = JSON.parse(fs.readFileSync(key_file_path))
 
 // ------------------------------------------------------ METHODS
 
+// ---------------- FILE SYSTEM
+
 function load() {
     keys = JSON.parse(fs.readFileSync(key_file_path))
 }
@@ -27,7 +29,9 @@ function save() {
     fs.writeFileSync(key_file_path, JSON.stringify(keys))
 }
 
-function add_key(data = []) {
+// ---------------- BASIC
+
+function add_key(data = {}) {
     load()
     let key = uuid()
     keys[key] = data
@@ -48,6 +52,68 @@ function key_exists(key) {
     return key in keys
 }
 
+function key_working(key) {
+    return key_exists(key) && !is_banned(key)
+}
+
+// ---------------- PROPS
+
+function set_prop(key, prop, value) {
+    load()
+    if (!key_exists(key)) return false
+    keys[key][prop] = value
+    save()
+    return true
+}
+
+function get_prop(key, prop) {
+    load()
+    return keys[key][prop]
+}
+
+function remove_prop(key, prop) {
+    load()
+    if (!key_exists(key)) return false
+    delete keys[key][prop]
+    save()
+    return true
+}
+
+// ---------------- SPECIFIC
+
+function is_admin(key) {
+    return get_prop(key, 'admin') === true
+}
+
+function set_admin(key) {
+    return set_prop(key, 'admin', true)
+}
+
+function unadmin(key) {
+    if (!is_admin(key)) return false
+    return remove_prop(key, 'admin')
+}
+
+function is_banned(key) {
+    return get_prop(key, 'banned') === true
+}
+
+function ban(key) {
+    return set_prop(key, 'banned', true)
+}
+
+function unban(key) {
+    if (!is_banned(key)) return false
+    return remove_prop(key, 'banned')
+}
+
 // ------------------------------------------------------ EXPORTS
 
-module.exports = { add_key, remove_key, key_exists, keys }
+module.exports = {
+    add_key, remove_key, key_exists,
+    set_prop, get_prop,
+    is_admin, set_admin, unadmin,
+    is_banned, ban, unban,
+    key_working,
+    keys
+}

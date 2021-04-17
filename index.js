@@ -23,7 +23,7 @@ app.get('/wavenet-server.js', async (req, res) => {
 
 function check_auth(headers) {
     const key = headers['wns-apikey']
-    return key_manager.key_exists(key)
+    return key_manager.key_working(key)
 }
 
 function auth_test(req, res, next) {
