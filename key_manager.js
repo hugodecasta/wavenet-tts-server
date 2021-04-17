@@ -12,7 +12,7 @@ if (!fs.existsSync(key_dir)) {
     fs.mkdirSync(key_dir)
 }
 if (!fs.existsSync(key_file_path)) {
-    fs.writeFileSync(key_file_path, '[]')
+    fs.writeFileSync(key_file_path, '{}')
 }
 
 let keys = JSON.parse(fs.readFileSync(key_file_path))
@@ -27,10 +27,10 @@ function save() {
     fs.writeFileSync(key_file_path, JSON.stringify(keys))
 }
 
-function add_key() {
+function add_key(data = []) {
     load()
     let key = uuid()
-    keys.push(key)
+    keys[key] = data
     save()
     return key
 }
@@ -38,14 +38,14 @@ function add_key() {
 function remove_key(key) {
     load()
     if (!key_exists(key)) return false
-    keys.splice(keys.indexOf(key), 1)
+    delete keys[key]
     save()
     return true
 }
 
 function key_exists(key) {
     load()
-    return keys.includes(key)
+    return key in keys
 }
 
 // ------------------------------------------------------ EXPORTS

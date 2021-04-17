@@ -5,9 +5,9 @@ const key_manager = require('./key_manager')
 let args = process.argv.slice(2, 10000)
 
 let commands = {
-    'new': function () {
+    'new': function (data) {
         console.log('creating new key')
-        return key_manager.add_key()
+        return key_manager.add_key(data)
     },
     'revoke': function (key) {
         console.log('removing key', key)
@@ -28,7 +28,6 @@ if (args.length < 1) {
 
 // ------------------------------------------------------ LAUNCHER
 
-let command = args[0]
-let data = args[1]
+const [command, ...data] = args
 
 console.log(commands[command](data))
