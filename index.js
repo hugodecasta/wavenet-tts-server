@@ -51,10 +51,10 @@ app.get('/api/quotas', auth_test, async (req, res) => {
 })
 
 app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
-    let { text, voice_name, lang } = req.body
+    let { text, voice_name, lang, force_translate } = req.body
     let key = req.auth_key
     try {
-        res.jsonp(await create_tts_file(text, voice_name, lang, key))
+        res.jsonp(await create_tts_file(text, voice_name, lang, force_translate, key))
     } catch (e) {
         console.log('ERROR', e)
         res.status(400)

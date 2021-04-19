@@ -1,5 +1,6 @@
 const textToSpeech = require('@google-cloud/text-to-speech');
 const parsed_for_tts = require('./parsed_for_tts.js')
+const translator = require('./deepL')
 const fs = require('fs');
 
 //--------------------------------------------------------------------------------------- DATA
@@ -34,12 +35,12 @@ function quotas_path(key) {
     return `${quotas_dir}/${key}.json`
 }
 
-function set_quotas(key, text) {
+function set_quotas(key, text, force_translate) {
     const length = text.length
     const path = quotas_path(key)
     if (!fs.existsSync(path)) fs.writeFileSync(path, '[]')
     const quotas_data = JSON.parse(fs.readFileSync(path))
-    quotas_data.push({ key, length, date: Date.now() })
+    quotas_data.push({ key, length, force_translate, date: Date.now() })
     fs.writeFileSync(path, JSON.stringify(quotas_data))
 }
 
@@ -58,10 +59,11 @@ async function tts(text, voice) {
     return response.audioContent
 }
 
-async function create_tts_file(text, voice_name, lang, key) {
+async function create_tts_file(text, voice_name, lang, force_translate, key) {
     const voice = used_voices[voice_name][lang]
-    const sent_text = parsed_for_tts(text)
-    set_quotas(key, sent_text)
+    let sent_text = parsed_for_tts(text)
+    if (force_translate) sent_text = await translator(sent_text, lang)
+    set_quotas(key, sent_text, force_translate)
     const sound_bin = await tts(sent_text, voice)
     const file_name = `${Date.now() + '-' + parseInt(Math.random() * 100000)}.mp3`
     const path = `${audio_dir}/${file_name}`
