@@ -14,13 +14,14 @@
         table {
             border-collapse: collapse;
             font-size: 13px;
-            /* width: 100%; */
+            width: 100%;
         }
 
         th {
             padding: 4px 16px;
             margin: 0px;
             border: none;
+            text-align: left;
         }
 
         thead {
@@ -37,7 +38,8 @@
             color: rgba(0, 0, 0, 0.66)
         }
 
-        td.key {
+        .key,
+        .color {
             text-align: center;
         }
 
@@ -45,36 +47,70 @@
             cursor: pointer;
             background: rgba(0, 0, 0, 0.1);
         }
+
+        .marble {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin: auto;
+        }
     </style>
 </head>
 
 <body>
 
-    <input id="apikey">
-    <div id="graph"></div>
-    <table>
-        <thead>
-            <tr>
-                <th>user</th>
-                <th>average characters</th>
-                <th>total characters</th>
-                <th>key</th>
-            </tr>
-        </thead>
-        <tbody id="keys"></tbody>
-    </table>
+    <input id="apikey" type="password">
+    <div id="chart"></div>
+    <table id="keys"></table>
 
     <script src="wavenet-server.js"></script>
     <script>
+
+        // -------------------------------- QUOTAS FIELDS
+
+        const quotas_fields = {
+            'color': {
+                value: (key, key_data, quotas, i) => colors[i % colors.length]
+            },
+            'user': {
+                value: (key, key_data, quotas) => key_data.user,
+            },
+            'average characters': {
+                value: (key, key_data, quotas) =>
+                    parseInt(quotas_fields['total characters'].value(key, key_data, quotas) / (quotas.length || 1)),
+                suffix: ' - chars / req',
+            },
+            'total characters': {
+                value: (key, key_data, quotas) => quotas.reduce((a, b) => a + (b.length ?? 0), 0),
+                suffix: ' - chars',
+            },
+            'translation usage': {
+                value: (key, key_data, quotas) => parseInt((quotas
+                    .reduce((a, b) => a + (b.force_translate ? 1 : 0), 0) / (quotas.length || 1)) * 100),
+                suffix: ' %',
+            },
+            'key': {
+                value: (key, key_data, quotas) => key,
+            }
+        }
 
         // -------------------------------- DATA
         let client = null
 
         const apikey_elm = document.getElementById('apikey')
-        const graph_elm = document.getElementById('graph')
+        const chart_elm = document.getElementById('chart')
         const keys_elm = document.getElementById('keys')
 
         let apikey = localStorage.getItem('apikey') ?? ''
+
+        let filter_key = null
+
+        const colors = [
+            '#4285f4',
+            '#ea4335',
+            '#fbbc05',
+            '#34a853'
+        ]
 
         // -------------------------------- API KEY
         apikey_elm.value = apikey
@@ -103,30 +139,142 @@
         }
 
         // -------------------------------- DISPLAY QUOTAS
+
+        function create_svg_elm(tag) {
+            return document.createElementNS("http://www.w3.org/2000/svg", tag)
+        }
+
+        // ------------------------- DISPLAY CHART
+        function update_chart(quotas) {
+            let disp_quotas = quotas
+            if (filter_key) disp_quotas = Object.fromEntries(Object.entries(quotas)
+                .map(([key, qs]) => key == filter_key ? [key, qs] : [key, []]))
+
+            const anti_overlap_value_spread = 100
+            const anti_overlap_time_spread = 1000 * 60 * 60 * 24
+            let anti_overlap_map = {}
+
+            const all_dates = Object.values(disp_quotas).flat().map(q => q.date)
+            const start = Math.min(...all_dates)
+            const end = Math.max(...all_dates)
+            const length = (end - start) || 1
+
+            const all_values = Object.values(disp_quotas).flat().map(q => q.length ?? 0)
+            const max_value = Math.max(...all_values)
+
+            const padding = 40
+            const legend_padding = 60
+            const full_width = window.innerWidth
+            const full_height = window.innerHeight / 1.5 - 100
+            const width = full_width - (padding + legend_padding)
+            const height = full_height - (padding + legend_padding)
+
+            const time_division = parseInt(length / (1000 * 60 * 60 * 15))
+            const value_division = 10
+
+            let svg = create_svg_elm('svg')
+            svg.setAttribute('width', full_width)
+            svg.setAttribute('height', full_height)
+            chart_elm.innerHTML = ''
+            chart_elm.appendChild(svg)
+
+            Object.keys(disp_quotas).forEach((key, key_i) => {
+                const color = colors[key_i % colors.length]
+                Object.values(disp_quotas[key]).forEach((quota, i) => {
+                    const rect = create_svg_elm('rect')
+                    svg.appendChild(rect)
+                    rect.setAttribute('fill', color)
+                    rect.setAttribute('stroke-width', '20')
+
+                    const char_length_value = quota.length
+                    const q_date = quota.date
+
+                    const time_spreaded = parseInt(q_date / anti_overlap_time_spread)
+                    const value_spreaded = parseInt(char_length_value / anti_overlap_value_spread)
+
+                    const time = ((q_date - start) / length) * width
+                    const value = ((char_length_value ?? 0) / max_value) * height
+
+                    const x = legend_padding + time
+                    let y = padding + (height - value)
+
+                    rect.setAttribute('width', 4)
+                    rect.setAttribute('height', value)
+                    rect.setAttribute('x', x)
+                    rect.setAttribute('y', y)
+
+                    if (!anti_overlap_map[time_spreaded])
+                        anti_overlap_map[time_spreaded] = {}
+                    if (!anti_overlap_map[time_spreaded][value_spreaded])
+                        anti_overlap_map[time_spreaded][value_spreaded] = 0
+
+                    y -= anti_overlap_map[time_spreaded][value_spreaded]
+                    anti_overlap_map[time_spreaded][value_spreaded] += 20
+
+                    const text = create_svg_elm('text')
+                    svg.appendChild(text)
+                    text.innerHTML = quota.length
+                    text.setAttribute('x', x - 15)
+                    text.setAttribute('y', y - 5)
+                    text.setAttribute('fill', color)
+                })
+            })
+        }
+
+        // ------------------------- MAIN DISPLAY UPDATER
         async function update_quotas() {
+            if (!client) return
             const quotas = await get_quotas()
             const keys = await get_keys()
 
             const name_of = (key) => keys[key].name
             const td = (data, classe = '') => {
                 const td = document.createElement('td')
-                if (classe) td.classList.add(classe)
-                td.innerHTML = data
+                if (classe) td.classList.add(classe.replace(' ', '_'))
+                if (data.nodeType) td.append(data)
+                else td.innerHTML = data
                 return td
             }
 
             keys_elm.innerHTML = ''
-            Object.entries(keys).forEach(([key, data]) => {
-                const line_elm = document.createElement('tr')
-                line_elm.appendChild(td(data.user))
-                const total = quotas[key].reduce((a, b) => a + (b.length ?? 0), 0)
-                const avg = parseInt((total / (quotas[key].length || 1)) * 100) / 100
-                line_elm.appendChild(td(avg + ' chars / req'))
-                line_elm.appendChild(td(total + ' chars'))
-                line_elm.appendChild(td(key, 'key'))
-                keys_elm.append(line_elm)
+
+            const head = document.createElement('thead')
+            keys_elm.append(head)
+            const head_tr = document.createElement('tr')
+            head.appendChild(head_tr)
+            Object.keys(quotas_fields).forEach(field_name => {
+                const head_th = document.createElement('th')
+                head_th.innerHTML = field_name
+                head_th.classList.add(field_name.replace(' ', '_'))
+                head_tr.appendChild(head_th)
             })
+            const body = document.createElement('tbody')
+            keys_elm.append(body)
+            Object.entries(keys).forEach(([key, key_data], i) => {
+                const its_quotas = quotas[key]
+                const line_elm = document.createElement('tr')
+                line_elm.onmouseenter = () => { filter_key = key; update_chart(quotas) }
+                line_elm.onmouseleave = () => { filter_key = null; update_chart(quotas) }
+                Object.entries(quotas_fields).forEach(([field_name, { value, suffix }]) => {
+                    const comp_value = value(key, key_data, its_quotas, i)
+                    let inner_td = comp_value + (suffix ?? '')
+                    if (field_name == 'color') {
+                        const marble = document.createElement('div')
+                        marble.classList.add('marble')
+                        marble.style.background = comp_value
+                        inner_td = marble
+                    }
+                    line_elm.appendChild(td(inner_td, field_name))
+                })
+                body.append(line_elm)
+            })
+
+            update_chart(quotas)
         }
+
+        // ----------------------------------------------- MAIN
+
+        setInterval(update_quotas, 5000)
 
     </script>
 
