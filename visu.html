@@ -64,7 +64,7 @@
         <tbody id="keys"></tbody>
     </table>
 
-    <script src="http://localhost:5050/wavenet-server.js"></script>
+    <script src="wavenet-server.js"></script>
     <script>
 
         // -------------------------------- DATA
@@ -81,7 +81,7 @@
         if (apikey) init_client(apikey)
         function init_client(apikey) {
             // client = new WAVENET_CLIENT(apikey)
-            client = new WAVENET_CLIENT(apikey, 'http://localhost:5050')
+            client = new WAVENET_CLIENT(apikey)
             update_quotas()
         }
         apikey_elm.onchange = () => {
