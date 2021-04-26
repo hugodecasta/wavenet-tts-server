@@ -1,5 +1,6 @@
 const textToSpeech = require('@google-cloud/text-to-speech');
 const parsed_for_tts = require('./parsed_for_tts.js')
+// const translator = require('deepl')
 const translator = require('./deepL')
 const fs = require('fs');
 
@@ -7,6 +8,7 @@ const fs = require('fs');
 
 // --------------------------- CREDENTIALS
 process.env.GOOGLE_APPLICATION_CREDENTIALS = __dirname + '/google_credentials.json'
+const { auth_key } = require('./deepL_credentials.json')
 
 // --------------------------- VOICES
 const voices = require('./voices.json')
@@ -18,7 +20,10 @@ const used_voices = Object.fromEntries([...'ABCDE'].map(name => [
         voices.find(v => v.name.includes(`${lang}-Wavenet-${name}`))
     ]))
 ]))
-
+const deepl_lang_map = {
+    'fr-FR': 'FR',
+    'en-US': 'EN'
+}
 // --------------------------- SAVE DATA
 const audio_dir = __dirname + '/audio_data'
 if (!fs.existsSync(audio_dir)) fs.mkdirSync(audio_dir)
@@ -59,10 +64,17 @@ async function tts(text, voice) {
     return response.audioContent
 }
 
+async function translate(text, lang) {
+    const target_lang = deepl_lang_map[lang]
+    const results = await translator({ free_api: true, text, target_lang, auth_key })
+    // return results.data.translations[0].text
+    return results
+}
+
 async function create_tts_file(text, voice_name, lang, force_translate, key) {
     const voice = used_voices[voice_name][lang]
     let sent_text = parsed_for_tts(text)
-    if (force_translate) sent_text = await translator(sent_text, lang)
+    if (force_translate) sent_text = await translate(sent_text, lang)
     set_quotas(key, sent_text, force_translate)
     const sound_bin = await tts(sent_text, voice)
     const file_name = `${Date.now() + '-' + parseInt(Math.random() * 100000)}.mp3`

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Quotas Vizu</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        body {
+            color: #282828;
+        }
+
+        table {
+            border-collapse: collapse;
+            font-size: 13px;
+            /* width: 100%; */
+        }
+
+        th {
+            padding: 4px 16px;
+            margin: 0px;
+            border: none;
+        }
+
+        thead {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        tr {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        td {
+            border: none;
+            padding: 7px 16px;
+            color: rgba(0, 0, 0, 0.66)
+        }
+
+        td.key {
+            text-align: center;
+        }
+
+        tbody tr:hover {
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+
+    <input id="apikey">
+    <div id="graph"></div>
+    <table>
+        <thead>
+            <tr>
+                <th>user</th>
+                <th>average characters</th>
+                <th>total characters</th>
+                <th>key</th>
+            </tr>
+        </thead>
+        <tbody id="keys"></tbody>
+    </table>
+
+    <script src="http://localhost:5050/wavenet-server.js"></script>
+    <script>
+
+        // -------------------------------- DATA
+        let client = null
+
+        const apikey_elm = document.getElementById('apikey')
+        const graph_elm = document.getElementById('graph')
+        const keys_elm = document.getElementById('keys')
+
+        let apikey = localStorage.getItem('apikey') ?? ''
+
+        // -------------------------------- API KEY
+        apikey_elm.value = apikey
+        if (apikey) init_client(apikey)
+        function init_client(apikey) {
+            // client = new WAVENET_CLIENT(apikey)
+            client = new WAVENET_CLIENT(apikey, 'http://localhost:5050')
+            update_quotas()
+        }
+        apikey_elm.onchange = () => {
+            apikey = apikey_elm.value
+            localStorage.setItem('apikey', apikey)
+            init_client(apikey)
+        }
+
+        // -------------------------------- GET DATA
+        async function get_keys() {
+            const keys = await client.get_keys()
+            const keys_disp = apikey in keys ? keys : { [apikey]: keys }
+            return keys_disp
+        }
+        async function get_quotas() {
+            const quotas = await client.get_quotas()
+            const quotas_disp = Array.isArray(quotas) ? { [apikey]: quotas } : quotas
+            return quotas_disp
+        }
+
+        // -------------------------------- DISPLAY QUOTAS
+        async function update_quotas() {
+            const quotas = await get_quotas()
+            const keys = await get_keys()
+
+            const name_of = (key) => keys[key].name
+            const td = (data, classe = '') => {
+                const td = document.createElement('td')
+                if (classe) td.classList.add(classe)
+                td.innerHTML = data
+                return td
+            }
+
+            keys_elm.innerHTML = ''
+            Object.entries(keys).forEach(([key, data]) => {
+                const line_elm = document.createElement('tr')
+                line_elm.appendChild(td(data.user))
+                const total = quotas[key].reduce((a, b) => a + (b.length ?? 0), 0)
+                const avg = parseInt((total / (quotas[key].length || 1)) * 100) / 100
+                line_elm.appendChild(td(avg + ' chars / req'))
+                line_elm.appendChild(td(total + ' chars'))
+                line_elm.appendChild(td(key, 'key'))
+                keys_elm.append(line_elm)
+            })
+        }
+
+    </script>
+
+</body>
+
+</html>

@@ -1,4 +1,3 @@
-const { auth_key } = require('./deepL_credentials.json')
 const fetch = require('node-fetch')
 
 const lang_map = {
@@ -6,7 +5,7 @@ const lang_map = {
     'en-US': 'EN'
 }
 
-async function translate(text, lang_target) {
+async function translate({ auth_key, text, lang_target }) {
     const target_lang = lang_map[lang_target] ?? 'EN'
     const euc = encodeURIComponent
     const data = { auth_key, text, target_lang };

@@ -19,11 +19,15 @@ app.get('/wavenet-server.js', async (req, res) => {
     res.sendFile(__dirname + '/lib.js')
 })
 
+app.get('/quotas', async (req, res) => {
+    res.sendFile(__dirname + '/visu.html')
+})
+
 // ------------------------------------------------------ AUTH MIDDLEWARE
 
-function check_auth(headers) {
+function check_auth(headers, need_admin = false) {
     const key = headers['wns-apikey']
-    return key_manager.key_working(key)
+    return key_manager.key_working(key) && (!need_admin || key_manager.is_admin(key))
 }
 
 function auth_test(req, res, next) {
@@ -48,6 +52,12 @@ app.get('/api/quotas', auth_test, async (req, res) => {
         return res.json(Object.fromEntries(all_keys.map(key => [key, get_quotas(key)])))
     }
     res.json(get_quotas(key))
+})
+
+app.get('/api/keys', auth_test, async (req, res) => {
+    let key = req.auth_key
+    if (key_manager.is_admin(key)) return res.json(key_manager.keys)
+    res.json(key_manager.keys[key])
 })
 
 app.post('/api/tts', auth_test, jsonParser, async (req, res) => {
