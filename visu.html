@@ -144,8 +144,11 @@
             return document.createElementNS("http://www.w3.org/2000/svg", tag)
         }
 
+        let quotas = null
+
         // ------------------------- DISPLAY CHART
-        function update_chart(quotas) {
+
+        function update_chart() {
             let disp_quotas = quotas
             if (filter_key) disp_quotas = Object.fromEntries(Object.entries(quotas)
                 .map(([key, qs]) => key == filter_key ? [key, qs] : [key, []]))
@@ -164,7 +167,7 @@
 
             const padding = 40
             const legend_padding = 60
-            const full_width = window.innerWidth
+            const full_width = window.innerWidth - 10
             const full_height = window.innerHeight / 1.5 - 100
             const width = full_width - (padding + legend_padding)
             const height = full_height - (padding + legend_padding)
@@ -189,9 +192,6 @@
                     const char_length_value = quota.length
                     const q_date = quota.date
 
-                    const time_spreaded = parseInt(q_date / anti_overlap_time_spread)
-                    const value_spreaded = parseInt(char_length_value / anti_overlap_value_spread)
-
                     const time = ((q_date - start) / length) * width
                     const value = ((char_length_value ?? 0) / max_value) * height
 
@@ -202,6 +202,9 @@
                     rect.setAttribute('height', value)
                     rect.setAttribute('x', x)
                     rect.setAttribute('y', y)
+
+                    const time_spreaded = parseInt(q_date / anti_overlap_time_spread)
+                    const value_spreaded = parseInt(char_length_value / anti_overlap_value_spread)
 
                     if (!anti_overlap_map[time_spreaded])
                         anti_overlap_map[time_spreaded] = {}
@@ -224,7 +227,7 @@
         // ------------------------- MAIN DISPLAY UPDATER
         async function update_quotas() {
             if (!client) return
-            const quotas = await get_quotas()
+            quotas = await get_quotas()
             const keys = await get_keys()
 
             const name_of = (key) => keys[key].name
@@ -273,6 +276,8 @@
         }
 
         // ----------------------------------------------- MAIN
+
+        window.onresize = update_chart
 
         setInterval(update_quotas, 5000)
 
