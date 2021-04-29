@@ -4,6 +4,8 @@
 <head>
     <meta charset='utf-8'>
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;500&display=swap" rel="stylesheet">
     <title>Quotas Vizu</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <style>
@@ -54,13 +56,48 @@
             border-radius: 50%;
             margin: auto;
         }
+
+        button {
+            margin: 5px;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            background-color: #4285f4;
+            color: #fff;
+            font-weight: 500;
+            font-size: .875rem;
+            letter-spacing: .25px;
+            -webkit-font-smoothing: antialiased;
+            font-family: Roboto;
+        }
+
+        button.inactive {
+            opacity: 0.5;
+        }
+
+        button:hover {
+            cursor: pointer;
+            opacity: 0.9;
+            transition: all 0.3s;
+        }
+
+        button:active {
+            transition: all 0s;
+            opacity: 0.5;
+        }
     </style>
 </head>
 
 <body>
 
-    <input id="apikey" type="password">
+    <input id="apikey" type="password" placeholder="your key here">
     <div id="chart"></div>
+
+    <button class='filter_start' offset="null">always</button>
+    <button class='filter_start' offset="1000*60*60*24*7">last week</button>
+    <button class='filter_start' offset="1000*60*60*24">last day</button>
+    <button class='filter_start' offset="1000*60*60">last hour</button>
+
     <table id="keys"></table>
 
     <script src="wavenet-server.js"></script>
@@ -100,10 +137,12 @@
         const apikey_elm = document.getElementById('apikey')
         const chart_elm = document.getElementById('chart')
         const keys_elm = document.getElementById('keys')
+        const filter_start_btns = Array.from(document.getElementsByClassName('filter_start'))
 
         let apikey = localStorage.getItem('apikey') ?? ''
 
         let filter_key = null
+        let filter_start = localStorage.getItem('filter_start') ?? null
 
         const colors = [
             '#4285f4',
@@ -111,6 +150,27 @@
             '#fbbc05',
             '#34a853'
         ]
+
+        // -------------------------------- filter start buttons
+        let filter_start_btn_map = {}
+        function setup_btn_active() {
+            Object.entries(filter_start_btn_map).forEach(([offset, btn]) => {
+                if ((filter_start ?? 'null') == offset) btn.classList.remove('inactive')
+                else btn.classList.add('inactive')
+            })
+        }
+        filter_start_btns.forEach(btn => {
+            let offset = 0
+            eval('offset = ' + btn.getAttribute('offset'))
+            filter_start_btn_map[offset] = btn
+            btn.onclick = () => {
+                filter_start = offset
+                localStorage.setItem('filter_start', filter_start)
+                setup_btn_active()
+                update_chart()
+            }
+            setup_btn_active()
+        })
 
         // -------------------------------- API KEY
         apikey_elm.value = apikey
@@ -150,8 +210,15 @@
 
         function update_chart() {
             let disp_quotas = quotas
-            if (filter_key) disp_quotas = Object.fromEntries(Object.entries(quotas)
+
+            if (filter_key) disp_quotas = Object.fromEntries(Object.entries(disp_quotas)
                 .map(([key, qs]) => key == filter_key ? [key, qs] : [key, []]))
+            if (filter_start) {
+                const now = Date.now()
+                const offset = now - filter_start
+                disp_quotas = Object.fromEntries(Object.entries(disp_quotas)
+                    .map(([key, qs]) => [key, qs.filter(q => q.date > offset)]))
+            }
 
             const anti_overlap_value_spread = 100
             const anti_overlap_time_spread = 1000 * 60 * 60 * 24
