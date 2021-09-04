@@ -1,7 +1,7 @@
 module.exports = (message) => {
     message = message
         .replace(/\.\n/g, 'PPOINT\n')
-        .replace(/●/g, '\n')
+        .replace(/●/g, '.\n')
         .replace(/PPOINT\n/g, '.\n')
         .replace(/\*/g, '')
         .replace(/\@all/g, 'Message pour tout le monde,')
